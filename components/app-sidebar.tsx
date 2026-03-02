@@ -7,17 +7,18 @@ import {
   Users,
   BarChart3,
   ChevronLeft,
-  ChevronRight,
+  ChevronRight, MapPin
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export type View = "pedidos" | "kanban" | "clientes" | "reportes"
+export type View = "pedidos" | "kanban" | "clientes" | "reportes" | "mapa"
 
 const navItems: { id: View; label: string; icon: React.ElementType }[] = [
   { id: "pedidos", label: "Pedidos", icon: Package },
   { id: "kanban", label: "Envios y Retiros", icon: Truck },
   { id: "clientes", label: "Clientes", icon: Users },
   { id: "reportes", label: "Reportes", icon: BarChart3 },
+  { id: "mapa", label: "Mapa en Vivo", icon: MapPin },
 ]
 
 export function AppSidebar({

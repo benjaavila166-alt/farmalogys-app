@@ -8,6 +8,7 @@ import { KanbanView } from "@/components/kanban-view"
 import { ClientesView } from "@/components/clientes-view"
 import { ReportesView } from "@/components/reportes-view"
 import { Button } from "@/components/ui/button"
+import dynamic from "next/dynamic"
 import { useSession } from "@/lib/session-context"
 import { PinUnlockDialog } from "@/components/pin-unlock-dialog"
 import { LogOut, LockKeyhole, Menu } from "lucide-react"
@@ -16,6 +17,11 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet"
+
+const MapaEnVivoView = dynamic(
+  () => import("./mapa-en-vivo-view").then((mod) => mod.MapaEnVivoView),
+  { ssr: false }
+)
 
 export function DashboardShell() {
   const [currentView, setCurrentView] = useState<View>("pedidos")
@@ -29,6 +35,7 @@ export function DashboardShell() {
     kanban: <KanbanView />,
     clientes: <ClientesView />,
     reportes: <ReportesView />,
+    mapa: <MapaEnVivoView />,
   }
 
   function handleViewChange(view: View) {
