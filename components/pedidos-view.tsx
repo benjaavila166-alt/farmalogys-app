@@ -20,9 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Download, Search, CalendarDays } from "lucide-react"
+import { Download, Search, CalendarDays, Plus } from "lucide-react" // Agregué el ícono Plus
 import { MOCK_PEDIDOS } from "@/lib/mock-data"
 import type { EstadoPago } from "@/lib/types"
+
+// IMPORTANTE: Asegúrate de que esta ruta coincida con donde guardaste el modal
+import AgregarPedidoModal from "@/components/agregar-pedido-modal" 
 
 function estadoPagoLabel(estado: EstadoPago) {
   switch (estado) {
@@ -40,6 +43,9 @@ export function PedidosView() {
   const [dateFilter, setDateFilter] = useState("")
   const [estadoFilter, setEstadoFilter] = useState<string>("todos")
   const [tipoTab, setTipoTab] = useState<string>("envios")
+  
+  // NUEVO: Estado para controlar si el modal está abierto o cerrado
+  const [modalAbierto, setModalAbierto] = useState(false)
 
   const filtered = useMemo(() => {
     return MOCK_PEDIDOS.filter((p) => {
@@ -81,6 +87,14 @@ export function PedidosView() {
     URL.revokeObjectURL(url)
   }
 
+  // Función temporal para cuando se agregue un pedido
+  const handlePedidoAgregado = () => {
+    // Por ahora solo cerramos el modal. 
+    // Más adelante, cuando cambies MOCK_PEDIDOS por datos reales de Supabase,
+    // aquí llamarás a la función que vuelve a buscar los datos a la base.
+    setModalAbierto(false)
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -90,10 +104,22 @@ export function PedidosView() {
             Gestion de pedidos programados
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={exportToCSV} className="w-fit">
-          <Download className="size-4 mr-1.5" />
-          Exportar CSV
-        </Button>
+        
+        {/* NUEVO: Contenedor para los dos botones */}
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => setModalAbierto(true)} 
+            className="w-fit bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="size-4 mr-1.5" />
+            Agregar Pedido
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="w-fit h-10">
+            <Download className="size-4 mr-1.5" />
+            Exportar CSV
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="envios" onValueChange={setTipoTab} className="w-full">
@@ -149,11 +175,20 @@ export function PedidosView() {
           Total: ${totalMonto.toLocaleString("es-AR")}
         </span>
       </div>
+
+      {/* NUEVO: Renderizado condicional del modal */}
+      {modalAbierto && (
+        <AgregarPedidoModal 
+          onClose={() => setModalAbierto(false)}
+          onPedidoAgregado={handlePedidoAgregado}
+        />
+      )}
     </div>
   )
 }
 
 function TablaPedidos({ filtered }: { filtered: any[] }) {
+  // ... (Esta parte queda exactamente igual que tu código original)
   return (
     <div className="rounded-lg border bg-card">
       <Table>
