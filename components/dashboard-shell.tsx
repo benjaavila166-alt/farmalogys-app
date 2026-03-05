@@ -1,16 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { AppSidebar, type View } from "@/components/app-sidebar"
-import { PresenceBar } from "@/components/presence-bar"
-import { PedidosView } from "@/components/pedidos-view"
-import { KanbanView } from "@/components/kanban-view"
-import { ClientesView } from "@/components/clientes-view"
-import { ReportesView } from "@/components/reportes-view"
+// ATENCIÓN ACA: Asegurate de que la ruta del import sea la correcta
+// Dependiendo de dónde pusiste los archivos, puede ser "@/components/ui/app-sidebar"
+import { AppSidebar, type View } from "./app-sidebar" 
+import { PresenceBar } from "./presence-bar"
+import { PedidosView } from "./pedidos-view"
+import { KanbanView } from "./kanban-view"
+import { ClientesView } from "./clientes-view"
+import { ReportesView } from "./reportes-view"
+import { ConfiguracionView } from "./configuracion-view" // 1. IMPORTAMOS LA VISTA
 import { Button } from "@/components/ui/button"
 import dynamic from "next/dynamic"
 import { useSession } from "@/lib/session-context"
-import { PinUnlockDialog } from "@/components/pin-unlock-dialog"
+import { PinUnlockDialog } from "./pin-unlock-dialog"
 import { LogOut, LockKeyhole, Menu } from "lucide-react"
 import {
   Sheet,
@@ -30,12 +33,14 @@ export function DashboardShell() {
   const [pinOpen, setPinOpen] = useState(false)
   const { isUnlocked, activeUser, lock } = useSession()
 
-  const viewComponent = {
+  // 2. AGREGAMOS 'configuracion' AL OBJETO DE COMPONENTES
+  const viewComponent: Record<View, React.ReactNode> = {
     pedidos: <PedidosView />,
     kanban: <KanbanView />,
     clientes: <ClientesView />,
     reportes: <ReportesView />,
     mapa: <MapaEnVivoView />,
+    configuracion: <ConfiguracionView />, // <-- CONEXIÓN FINAL
   }
 
   function handleViewChange(view: View) {
@@ -110,6 +115,7 @@ export function DashboardShell() {
 
         {/* Main content */}
         <main className="flex-1 overflow-auto p-4 lg:p-6">
+          {/* Aquí es donde se renderiza la vista elegida */}
           {viewComponent[currentView]}
         </main>
       </div>

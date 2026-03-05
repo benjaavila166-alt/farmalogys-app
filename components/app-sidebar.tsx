@@ -7,11 +7,14 @@ import {
   Users,
   BarChart3,
   ChevronLeft,
-  ChevronRight, MapPin
+  ChevronRight, 
+  MapPin,
+  Settings // Importamos el ícono de configuración
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export type View = "pedidos" | "kanban" | "clientes" | "reportes" | "mapa"
+// Actualizamos el tipo para incluir configuracion
+export type View = "pedidos" | "kanban" | "clientes" | "reportes" | "mapa" | "configuracion"
 
 const navItems: { id: View; label: string; icon: React.ElementType }[] = [
   { id: "pedidos", label: "Pedidos", icon: Package },
@@ -19,6 +22,7 @@ const navItems: { id: View; label: string; icon: React.ElementType }[] = [
   { id: "clientes", label: "Clientes", icon: Users },
   { id: "reportes", label: "Reportes", icon: BarChart3 },
   { id: "mapa", label: "Mapa en Vivo", icon: MapPin },
+  { id: "configuracion", label: "Configuración", icon: Settings }, // Nuevo ítem
 ]
 
 export function AppSidebar({

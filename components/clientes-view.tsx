@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { supabase } from "@/lib/supabase"
 import {
   Table,
   TableBody,
@@ -11,22 +12,51 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Download, Search, Phone, MapPin } from "lucide-react"
-import { MOCK_CLIENTES } from "@/lib/mock-data"
+import { Download, Search, Phone, MapPin, Plus, Pencil } from "lucide-react"
+import CrearClienteModal from "./crear-cliente-modal"
+import EditarClienteModal from "./editar-cliente-modal"
 
 export function ClientesView() {
+  const [clientes, setClientes] = useState<any[]>([])
   const [search, setSearch] = useState("")
+  const [modalAbierto, setModalAbierto] = useState(false)
+  const [clienteAEditar, setClienteAEditar] = useState<any>(null)
+
+  const fetchClientes = async () => {
+    const { data, error } = await supabase
+      .from('Clientes')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (data) setClientes(data)
+  }
+
+  useEffect(() => {
+    fetchClientes()
+
+    const channel = supabase
+      .channel('cambios-clientes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'Clientes' },
+        () => fetchClientes()
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   const filtered = useMemo(() => {
-    return MOCK_CLIENTES.filter(
+    return clientes.filter(
       (c) =>
         !search ||
-        c.nombre.toLowerCase().includes(search.toLowerCase()) ||
-        c.dni_cuit.includes(search) ||
-        c.direccion_principal.toLowerCase().includes(search.toLowerCase())
+        c.nombre?.toLowerCase().includes(search.toLowerCase()) ||
+        c.dni_cuit?.includes(search) ||
+        c.direccion_principal?.toLowerCase().includes(search.toLowerCase())
     )
-  }, [search])
+  }, [search, clientes])
 
   function exportToCSV() {
     const headers = ["ID", "Nombre", "DNI/CUIT", "WhatsApp", "Direccion"]
@@ -56,10 +86,19 @@ export function ClientesView() {
             Directorio de clientes registrados
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={exportToCSV} className="w-fit">
-          <Download className="size-4 mr-1.5" />
-          Exportar CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => setModalAbierto(true)} 
+            className="w-fit bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="size-4 mr-1.5" />
+            Agregar Cliente
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="w-fit h-10">
+            <Download className="size-4 mr-1.5" />
+            Exportar CSV
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-md">
@@ -80,28 +119,31 @@ export function ClientesView() {
               <TableHead className="hidden sm:table-cell">DNI/CUIT</TableHead>
               <TableHead>WhatsApp</TableHead>
               <TableHead className="hidden md:table-cell">Direccion</TableHead>
+              <TableHead className="w-20">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={4}
+                  colSpan={5}
                   className="h-32 text-center text-muted-foreground"
                 >
                   No se encontraron clientes
                 </TableCell>
               </TableRow>
-            ) : (
-              filtered.map((cliente) => (
-                <TableRow key={cliente.id}>
-                  <TableCell className="font-medium">
-                    {cliente.nombre}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">
-                    {cliente.dni_cuit}
-                  </TableCell>
-                  <TableCell>
+            )}
+            
+            {filtered.length > 0 && filtered.map((cliente) => (
+              <TableRow key={cliente.id}>
+                <TableCell className="font-medium">
+                  {cliente.nombre}
+                </TableCell>
+                <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">
+                  {cliente.dni_cuit || "-"}
+                </TableCell>
+                <TableCell>
+                  {cliente.whatsapp ? (
                     <a
                       href={`https://wa.me/${cliente.whatsapp.replace(/[^0-9]/g, "")}`}
                       target="_blank"
@@ -111,18 +153,27 @@ export function ClientesView() {
                       <Phone className="size-3.5" />
                       {cliente.whatsapp}
                     </a>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <MapPin className="size-3.5 shrink-0" />
-                      <span className="truncate max-w-xs">
-                        {cliente.direccion_principal}
-                      </span>
+                  ) : "-"}
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <MapPin className="size-3.5 shrink-0" />
+                    <span className="truncate max-w-xs">
+                      {cliente.direccion_principal || "-"}
                     </span>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setClienteAEditar(cliente)}
+                  >
+                    <Pencil className="size-4 text-muted-foreground hover:text-foreground" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>
@@ -130,6 +181,27 @@ export function ClientesView() {
       <div className="text-sm text-muted-foreground px-1">
         {filtered.length} clientes
       </div>
+
+      {modalAbierto && (
+        <CrearClienteModal 
+          onClose={() => setModalAbierto(false)}
+          onClienteCreado={(id, nombre) => {
+            setModalAbierto(false)
+            fetchClientes()
+          }}
+        />
+      )}
+
+      {clienteAEditar && (
+        <EditarClienteModal 
+          cliente={clienteAEditar}
+          onClose={() => setClienteAEditar(null)}
+          onClienteEditado={() => {
+            setClienteAEditar(null)
+            fetchClientes()
+          }}
+        />
+      )}
     </div>
   )
 }

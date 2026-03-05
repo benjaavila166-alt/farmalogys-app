@@ -19,7 +19,6 @@ export default function AgregarPedidoModal({ onClose, onPedidoAgregado }: Agrega
   const [loading, setLoading] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cargandoClientes, setCargandoClientes] = useState(true);
-  
   const [modalClienteAbierto, setModalClienteAbierto] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -29,7 +28,8 @@ export default function AgregarPedidoModal({ onClose, onPedidoAgregado }: Agrega
     monto_a_cobrar: 0,
     metodo_pago: 'efectivo',
     estado_pago: 'pendiente',
-    tipo_servicio: 'envio',
+    tipo_servicio: 'envio', 
+    estado_logistico: 'sin_atender',
     prioridad: false,
     tipo_pedido: 'particular'
   });
@@ -57,13 +57,18 @@ export default function AgregarPedidoModal({ onClose, onPedidoAgregado }: Agrega
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    const isCheckbox = type === 'checkbox';
-    const checked = isCheckbox ? (e.target as HTMLInputElement).checked : false;
+    
+    if (type === 'checkbox') {
+        setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
+        return;
+    }
 
-    setFormData({
-      ...formData,
-      [name]: isCheckbox ? checked : value
-    });
+    if (name === 'tipo_servicio') {
+      setFormData(prev => ({ ...prev, [name]: value, estado_logistico: 'sin_atender' }));
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -85,14 +90,15 @@ export default function AgregarPedidoModal({ onClose, onPedidoAgregado }: Agrega
             metodo_pago: formData.metodo_pago,
             estado_pago: formData.estado_pago,
             tipo_servicio: formData.tipo_servicio,
+            estado_logistico: formData.estado_logistico,
             prioridad: formData.prioridad,
             tipo_pedido: formData.tipo_pedido,
-            created_at: new Date().toISOString() // <-- NUEVO: Guarda la hora exacta de carga del pedido
+            created_at: new Date().toISOString() 
         }]);
 
       if (error) throw error;
-      alert('¡Pedido agregado con éxito!');
-      onPedidoAgregado(); // Esto refrescará la tabla en tu vista principal
+      
+      onPedidoAgregado(); 
       onClose(); 
     } catch (error: any) { 
       console.error('Error al guardar:', error?.message || error);
@@ -107,6 +113,28 @@ export default function AgregarPedidoModal({ onClose, onPedidoAgregado }: Agrega
     setFormData((prev) => ({ ...prev, cliente_id: nuevoId.toString() }));
     setModalClienteAbierto(false);
   };
+
+  const estadosEnvio = [
+    { value: 'sin_atender', label: 'Sin atender' },
+    { value: 'pendiente', label: 'Pendiente' },
+    { value: 'retirar_drogueria', label: 'Retirar de droguería' },
+    { value: 'entregar_cadete', label: 'Entregar a cadete' },
+    { value: 'en_camino', label: 'En camino' },
+    { value: 'entregado', label: 'Entregado' },
+    { value: 'reprogramado', label: 'Reprogramado' },
+    { value: 'cancelado', label: 'Cancelado' }
+  ];
+
+  const estadosRetiro = [
+    { value: 'sin_atender', label: 'Sin atender' },
+    { value: 'pendiente', label: 'Pendiente' },
+    { value: 'listo_para_entregar', label: 'Listo para entregar' },
+    { value: 'entregado', label: 'Entregado' },
+    { value: 'reprogramado', label: 'Reprogramado' },
+    { value: 'cancelado', label: 'Cancelado' }
+  ];
+
+  const opcionesEstado = formData.tipo_servicio === 'envio' ? estadosEnvio : estadosRetiro;
 
   return (
     <>
@@ -131,49 +159,31 @@ export default function AgregarPedidoModal({ onClose, onPedidoAgregado }: Agrega
                 </select>
                 <button 
                   type="button" 
-                  onClick={() => setModalClienteAbierto(true)}
-                  className="bg-zinc-100 dark:bg-zinc-800 border dark:border-zinc-700 px-3 py-2 rounded flex items-center gap-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors whitespace-nowrap"
-                  title="Crear nuevo cliente"
+                  onClick={() => setModalClienteAbierto(true)} 
+                  className="px-3 py-2 bg-zinc-100 border rounded dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 flex items-center gap-1.5 text-sm"
                 >
-                  <Plus className="size-4" />
-                  <span className="text-sm font-medium">Nuevo</span>
+                    <Plus className="size-4" />
+                    Nuevo
                 </button>
               </div>
             </div>
 
-            <div className="col-span-2 sm:col-span-1">
+            <div>
               <label className="block text-sm font-medium mb-1">Fecha Programada</label>
               <input required type="date" name="fecha_programada" value={formData.fecha_programada} onChange={handleChange} className="w-full border rounded p-2 dark:bg-zinc-800 dark:border-zinc-700" />
             </div>
 
-            <div className="col-span-2 sm:col-span-1">
+            <div>
               <label className="block text-sm font-medium mb-1">Monto a Cobrar ($)</label>
-              <input type="number" step="0.01" name="monto_a_cobrar" value={formData.monto_a_cobrar} onChange={handleChange} className="w-full border rounded p-2 dark:bg-zinc-800 dark:border-zinc-700" />
-            </div>
-
-            <div className="col-span-2 sm:col-span-1">
-              <label className="block text-sm font-medium mb-1">Método de Pago</label>
-              <select name="metodo_pago" value={formData.metodo_pago} onChange={handleChange} className="w-full border rounded p-2 dark:bg-zinc-800 dark:border-zinc-700">
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="tarjeta">Tarjeta</option>
-              </select>
-            </div>
-            
-            <div className="col-span-2 sm:col-span-1">
-              <label className="block text-sm font-medium mb-1">Tipo de Pedido</label>
-              <select name="tipo_pedido" value={formData.tipo_pedido} onChange={handleChange} className="w-full border rounded p-2 dark:bg-zinc-800 dark:border-zinc-700">
-                <option value="particular">Particular</option>
-                <option value="empresa">Empresa</option>
-              </select>
+              <input required type="number" name="monto_a_cobrar" value={formData.monto_a_cobrar} onChange={handleChange} className="w-full border rounded p-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Ej: 500" />
             </div>
 
             <div className="col-span-2">
               <label className="block text-sm font-medium mb-1">Detalle del Pedido</label>
-              <textarea name="detalle_pedido" value={formData.detalle_pedido} onChange={handleChange} className="w-full border rounded p-2 dark:bg-zinc-800 dark:border-zinc-700" rows={3}></textarea>
+              <textarea name="detalle_pedido" value={formData.detalle_pedido} onChange={handleChange} className="w-full border rounded p-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Ej: Bolsa con medicamentos, dirección de entrega..." rows={3}></textarea>
             </div>
 
-            <div className="col-span-2 sm:col-span-1">
+            <div>
               <label className="block text-sm font-medium mb-1">Tipo de Servicio</label>
               <select name="tipo_servicio" value={formData.tipo_servicio} onChange={handleChange} className="w-full border rounded p-2 dark:bg-zinc-800 dark:border-zinc-700">
                 <option value="envio">Envío</option>
@@ -181,15 +191,37 @@ export default function AgregarPedidoModal({ onClose, onPedidoAgregado }: Agrega
               </select>
             </div>
 
-            <div className="col-span-2 flex items-center mt-2">
-              <input type="checkbox" name="prioridad" checked={formData.prioridad} onChange={handleChange} className="mr-2 h-4 w-4" id="prioridad" />
-              <label htmlFor="prioridad" className="text-sm font-medium">Marcar como Alta Prioridad</label>
+            <div>
+              <label className="block text-sm font-medium mb-1">Estado Logístico</label>
+              <select name="estado_logistico" value={formData.estado_logistico} onChange={handleChange} className="w-full border rounded p-2 dark:bg-zinc-800 dark:border-zinc-700">
+                {opcionesEstado.map((opcion) => (
+                  <option key={opcion.value} value={opcion.value}>
+                    {opcion.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="col-span-2 flex justify-end gap-2 mt-4 pt-4 border-t dark:border-zinc-700">
-              <button type="button" onClick={onClose} className="px-4 py-2 border rounded hover:bg-gray-100 dark:hover:bg-zinc-800">Cancelar</button>
+            <div>
+              <label className="block text-sm font-medium mb-1">Estado Pago</label>
+              <select name="estado_pago" value={formData.estado_pago} onChange={handleChange} className="w-full border rounded p-2 dark:bg-zinc-800 dark:border-zinc-700">
+                <option value="pendiente">Pendiente</option>
+                <option value="cobrado">Cobrado</option>
+                <option value="no_cobrado">No cobrado</option>
+              </select>
+            </div>
+
+            <div className="col-span-2 flex items-center gap-2 mt-2">
+                <input type="checkbox" name="prioridad" id="prioridad" checked={formData.prioridad} onChange={handleChange} className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-500" />
+                <label htmlFor="prioridad" className="text-sm font-medium text-red-600">Marcar como Alta Prioridad</label>
+            </div>
+
+            <div className="col-span-2 flex justify-end gap-2 mt-6 pt-6 border-t dark:border-zinc-700">
+              <button type="button" onClick={onClose} className="px-4 py-2 border rounded hover:bg-gray-100 dark:hover:bg-zinc-800">
+                Cancelar
+              </button>
               <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
-                {loading ? 'Guardando...' : 'Guardar Pedido'}
+                {loading ? 'Agregando...' : 'Agregar Pedido'}
               </button>
             </div>
 
@@ -199,7 +231,7 @@ export default function AgregarPedidoModal({ onClose, onPedidoAgregado }: Agrega
 
       {modalClienteAbierto && (
         <CrearClienteModal 
-          onClose={() => setModalClienteAbierto(false)} 
+          onClose={() => setModalClienteAbierto(false)}
           onClienteCreado={handleClienteCreado}
         />
       )}
