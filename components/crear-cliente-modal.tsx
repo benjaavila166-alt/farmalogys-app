@@ -76,10 +76,8 @@ export default function CrearClienteModal({ onClose, onClienteCreado }: CrearCli
 
       if (error) throw error;
 
-      // Refrescar listas
       await cargarDatosMaestros();
 
-      // Autoseleccionar el nuevo item
       if (quickAddType === 'os') setSelectedObrasSociales(prev => [...prev, data.id]);
       if (quickAddType === 'cos') setSelectedCoseguros(prev => [...prev, data.id]);
       if (quickAddType === 'cat') setSelectedCategorias(prev => [...prev, data.id]);
@@ -126,11 +124,19 @@ export default function CrearClienteModal({ onClose, onClienteCreado }: CrearCli
     e.preventDefault();
     setLoading(true);
 
+    // Acá extraemos los nombres para guardarlos en la columna de texto simple de Clientes
+    const osNames = selectedObrasSociales.map(id => obrasSociales.find(os => os.id === id)?.nombre).filter(Boolean).join(' - ');
+    const cosNames = selectedCoseguros.map(id => coseguros.find(cos => cos.id === id)?.nombre).filter(Boolean).join(' - ');
+    const catNames = selectedCategorias.map(id => categorias.find(cat => cat.id === id)?.nombre).filter(Boolean).join(' - ');
+
     try {
       const { data: clienteData, error: clienteError } = await supabase
         .from('Clientes')
         .insert([{
           ...formData,
+          obra_social: osNames || null,
+          coseguro: cosNames || null,
+          categoria: catNames || 'general',
           latitud: formData.latitud ? parseFloat(formData.latitud) : null,
           longitud: formData.longitud ? parseFloat(formData.longitud) : null,
           created_at: new Date().toISOString()
@@ -152,7 +158,6 @@ export default function CrearClienteModal({ onClose, onClienteCreado }: CrearCli
         await supabase.from('cliente_categoria').insert(selectedCategorias.map(id => ({ cliente_id: nuevoClienteId, categoria_id: id })));
       }
       
-      alert('¡Cliente creado con éxito!');
       onClienteCreado(clienteData.id, clienteData.nombre); 
     } catch (error: any) {
       alert(`Error: ${error?.message}`);
@@ -161,7 +166,6 @@ export default function CrearClienteModal({ onClose, onClienteCreado }: CrearCli
     }
   };
 
-  // Sub-componente para el encabezado con botón de añadir
   const QuickAddHeader = ({ label, type }: { label: string, type: 'os' | 'cos' | 'cat' }) => (
     <div className="flex items-center justify-between mb-1">
       <label className="text-sm font-medium">{label}</label>

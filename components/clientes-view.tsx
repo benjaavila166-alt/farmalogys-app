@@ -1,3 +1,4 @@
+// components/ui/clientes-view.tsx
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -12,7 +13,8 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Download, Search, Phone, MapPin, Plus, Pencil } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Download, Search, Phone, MapPin, Plus, Pencil, Mail, User, Building, ExternalLink, CalendarDays, Activity } from "lucide-react"
 import CrearClienteModal from "./crear-cliente-modal"
 import EditarClienteModal from "./editar-cliente-modal"
 
@@ -54,21 +56,31 @@ export function ClientesView() {
         !search ||
         c.nombre?.toLowerCase().includes(search.toLowerCase()) ||
         c.dni_cuit?.includes(search) ||
-        c.direccion_principal?.toLowerCase().includes(search.toLowerCase())
+        c.direccion_principal?.toLowerCase().includes(search.toLowerCase()) ||
+        c.obra_social?.toLowerCase().includes(search.toLowerCase())
     )
   }, [search, clientes])
 
   function exportToCSV() {
-    const headers = ["ID", "Nombre", "DNI/CUIT", "WhatsApp", "Direccion"]
+    const headers = ["ID", "Nombre", "DNI/CUIT", "Fecha Nac.", "Sexo", "WhatsApp", "Email", "Direccion", "Departamento", "Link Maps", "Obra Social", "Coseguro", "Nro Afiliado", "Estado"]
     const rows = filtered.map((c) => [
       c.id,
       c.nombre,
-      c.dni_cuit,
-      c.whatsapp,
-      c.direccion_principal,
+      c.dni_cuit || "",
+      c.fecha_nacimiento || "",
+      c.sexo || "",
+      c.whatsapp || "",
+      c.email || "",
+      c.direccion_principal || "",
+      c.departamento || "",
+      c.link_ubi || "",
+      c.obra_social || "",
+      c.coseguro || "",
+      c.numero_afiliado || "",
+      c.estado_cliente ? "Activo" : "Inactivo"
     ])
-    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n")
-    const blob = new Blob([csv], { type: "text/csv" })
+    const csv = [headers, ...rows].map((r) => r.map(v => `"${v}"`).join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -104,29 +116,31 @@ export function ClientesView() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar por nombre, CUIT o direccion..."
+          placeholder="Buscar por nombre, CUIT, dirección u obra social..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
         />
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Nombre</TableHead>
-              <TableHead className="hidden sm:table-cell">DNI/CUIT</TableHead>
-              <TableHead>WhatsApp</TableHead>
-              <TableHead className="hidden md:table-cell">Direccion</TableHead>
-              <TableHead className="w-20">Acciones</TableHead>
+              <TableHead className="min-w-50">Cliente</TableHead>
+              <TableHead className="min-w-30">DNI/CUIT</TableHead>
+              <TableHead className="min-w-62.5">Contacto</TableHead>
+              <TableHead className="min-w-62.5">Ubicación</TableHead>
+              <TableHead className="min-w-50">Datos Médicos</TableHead>
+              <TableHead className="min-w-25">Estado</TableHead>
+              <TableHead className="w-16 sticky right-0 bg-card">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={7}
                   className="h-32 text-center text-muted-foreground"
                 >
                   No se encontraron clientes
@@ -135,35 +149,117 @@ export function ClientesView() {
             )}
             
             {filtered.length > 0 && filtered.map((cliente) => (
-              <TableRow key={cliente.id}>
-                <TableCell className="font-medium">
-                  {cliente.nombre}
+              <TableRow key={cliente.id} className={!cliente.estado_cliente ? "opacity-60" : ""}>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">{cliente.nombre}</span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                      {cliente.fecha_nacimiento && (
+                        <span className="flex items-center gap-1" title="Fecha de Nacimiento">
+                          <CalendarDays className="size-3" />
+                          {new Date(cliente.fecha_nacimiento).toLocaleDateString("es-AR")}
+                        </span>
+                      )}
+                      {cliente.sexo && cliente.sexo !== 'No especifica' && (
+                        <span className="flex items-center gap-1">
+                          <User className="size-3" />
+                          {cliente.sexo}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </TableCell>
-                <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">
+                
+                <TableCell className="font-mono text-sm text-muted-foreground">
                   {cliente.dni_cuit || "-"}
                 </TableCell>
+                
                 <TableCell>
-                  {cliente.whatsapp ? (
-                    <a
-                      href={`https://wa.me/${cliente.whatsapp.replace(/[^0-9]/g, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-                    >
-                      <Phone className="size-3.5" />
-                      {cliente.whatsapp}
-                    </a>
-                  ) : "-"}
+                  <div className="flex flex-col gap-1.5">
+                    {cliente.whatsapp ? (
+                      <a
+                        href={`https://wa.me/${cliente.whatsapp.replace(/[^0-9]/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                      >
+                        <Phone className="size-3.5" />
+                        {cliente.whatsapp}
+                      </a>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
+                    {cliente.email && cliente.email !== 'null' && (
+                       <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                         <Mail className="size-3.5" />
+                         <span className="truncate max-w-45">{cliente.email}</span>
+                       </span>
+                    )}
+                  </div>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MapPin className="size-3.5 shrink-0" />
-                    <span className="truncate max-w-xs">
-                      {cliente.direccion_principal || "-"}
+                
+                <TableCell>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin className="size-3.5 shrink-0" />
+                      <span className="truncate max-w-50" title={cliente.direccion_principal}>
+                        {cliente.direccion_principal || "-"}
+                      </span>
                     </span>
-                  </span>
+                    {cliente.departamento && cliente.departamento !== 'null' && (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground pl-5">
+                        <Building className="size-3" />
+                        Depto/Ref: {cliente.departamento}
+                      </span>
+                    )}
+                    {cliente.link_ubi && cliente.link_ubi !== 'null' && (
+                       <a href={cliente.link_ubi} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline pl-5">
+                         <ExternalLink className="size-3" />
+                         Ver Mapa
+                       </a>
+                    )}
+                  </div>
                 </TableCell>
+                
                 <TableCell>
+                  <div className="flex flex-col gap-1 text-sm">
+                    {cliente.obra_social && cliente.obra_social !== 'null' ? (
+                      <div className="flex items-start gap-1">
+                        <span className="font-medium text-foreground">O.S:</span>
+                        <span className="text-muted-foreground">{cliente.obra_social}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground italic text-xs">Sin Obra Social</span>
+                    )}
+                    
+                    {cliente.coseguro && cliente.coseguro !== 'null' && (
+                      <div className="flex items-start gap-1">
+                        <span className="font-medium text-foreground">Cos:</span>
+                        <span className="text-muted-foreground">{cliente.coseguro}</span>
+                      </div>
+                    )}
+                    
+                    {cliente.numero_afiliado && cliente.numero_afiliado !== 'null' && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Badge variant="outline" className="text-[10px] h-5">Nro: {cliente.numero_afiliado}</Badge>
+                      </div>
+                    )}
+                  </div>
+                </TableCell>
+
+                <TableCell>
+                  {cliente.estado_cliente ? (
+                    <Badge variant="default" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20">
+                      Activo
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive" className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20">
+                      Inactivo
+                    </Badge>
+                  )}
+                </TableCell>
+
+                <TableCell className="sticky right-0 bg-card">
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -179,7 +275,7 @@ export function ClientesView() {
       </div>
 
       <div className="text-sm text-muted-foreground px-1">
-        {filtered.length} clientes
+        Mostrando {filtered.length} clientes
       </div>
 
       {modalAbierto && (

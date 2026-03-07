@@ -1,7 +1,7 @@
+// components/ui/pedidos-view.tsx
 "use client"
 
-import { useState, useEffect } from "react"
-// IMPORTANTE: Ahora usamos usePedidos que creamos anteriormente
+import { useState } from "react"
 import { usePedidos } from "@/hooks/use-pedidos"
 import {
   Table,
@@ -21,8 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Download, Search, Plus } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Download, Search, Plus, MapPin } from "lucide-react"
 import AgregarPedidoModal from "@/components/agregar-pedido-modal"
 
 function estadoPagoLabel(estado: string) {
@@ -37,32 +37,22 @@ function estadoPagoLabel(estado: string) {
 }
 
 export function PedidosView() {
-  // Usamos el hook centralizado para traer los pedidos reales
   const { pedidos, fetchPedidos } = usePedidos()
   const [search, setSearch] = useState("")
   const [dateFilter, setDateFilter] = useState("")
   const [estadoFilter, setEstadoFilter] = useState<string>("todos")
-  // El valor de las pestañas debe coincidir con lo que guardas en la BD
   const [tipoTab, setTipoTab] = useState<string>("envio") 
   const [modalAbierto, setModalAbierto] = useState(false)
 
-  // --- FILTRADO EN CLIENTE CON DATOS REALES ---
   const filtered = pedidos.filter((p) => {
-    // 1. Filtro de búsqueda (nombre cliente, detalle o ID)
     const matchSearch =
       !search ||
       p.Clientes?.nombre?.toLowerCase().includes(search.toLowerCase()) ||
       p.detalle_pedido?.toLowerCase().includes(search.toLowerCase()) ||
       String(p.id).includes(search);
     
-    // 2. Filtro de fecha
     const matchDate = !dateFilter || p.fecha_programada === dateFilter;
-    
-    // 3. Filtro de estado de pago
     const matchEstado = estadoFilter === "todos" || p.estado_pago === estadoFilter;
-    
-    // 4. CORRECCIÓN CRÍTICA: Filtrar por tipo_servicio (envio/retiro) y no por tipo_pedido
-    // También ajustamos para que "envio" coincida con la pestaña "Envíos"
     const matchTipo = p.tipo_servicio?.toLowerCase() === tipoTab.toLowerCase();
 
     return matchSearch && matchDate && matchEstado && matchTipo;
@@ -95,7 +85,6 @@ export function PedidosView() {
       </div>
 
       <Tabs value={tipoTab} onValueChange={setTipoTab} className="w-full">
-        {/* Los values de las pestañas deben coincidir con la BD ('envio' y 'retiro') */}
         <TabsList className="grid w-full max-w-96 grid-cols-2 mb-4">
           <TabsTrigger value="envio">Envíos</TabsTrigger>
           <TabsTrigger value="retiro">Retiros</TabsTrigger>
@@ -143,7 +132,6 @@ export function PedidosView() {
       {modalAbierto && (
         <AgregarPedidoModal 
           onClose={() => setModalAbierto(false)}
-          // Esta es la otra corrección clave: Recargar los datos al agregar
           onPedidoAgregado={fetchPedidos}
         />
       )}
@@ -151,16 +139,19 @@ export function PedidosView() {
   )
 }
 
-// Subcomponente de tabla corregido
 function TablaPedidos({ filtered }: { filtered: any[] }) {
   return (
-    <div className="rounded-lg border bg-card">
+    <div className="rounded-lg border bg-card overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-20">ID</TableHead>
+            <TableHead className="w-16">ID</TableHead>
             <TableHead>Fecha</TableHead>
             <TableHead>Cliente</TableHead>
+            <TableHead>Dirección</TableHead>
+            <TableHead>Teléfono</TableHead>
+            <TableHead className="min-w-37.5">Indicaciones Ubi.</TableHead>
+            <TableHead>Link</TableHead>
             <TableHead className="hidden md:table-cell">Detalle</TableHead>
             <TableHead className="text-right">Monto</TableHead>
             <TableHead>Estado Pago</TableHead>
@@ -170,7 +161,7 @@ function TablaPedidos({ filtered }: { filtered: any[] }) {
         <TableBody>
           {filtered.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+              <TableCell colSpan={11} className="h-32 text-center text-muted-foreground">
                 No se encontraron pedidos
               </TableCell>
             </TableRow>
@@ -180,14 +171,24 @@ function TablaPedidos({ filtered }: { filtered: any[] }) {
               return (
                 <TableRow key={pedido.id}>
                   <TableCell className="font-mono text-xs text-muted-foreground">{pedido.id}</TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium whitespace-nowrap">
                     {new Date(pedido.fecha_programada).toLocaleDateString("es-AR")}
                   </TableCell>
-                  <TableCell className="font-medium">{pedido.Clientes?.nombre}</TableCell>
-                  <TableCell className="hidden md:table-cell max-w-xs truncate">{pedido.detalle_pedido}</TableCell>
+                  <TableCell className="font-medium whitespace-nowrap">{pedido.Clientes?.nombre}</TableCell>
+                  <TableCell className="max-w-37.5 truncate" title={pedido.direccion_entrega}>{pedido.direccion_entrega}</TableCell>
+                  <TableCell className="whitespace-nowrap">{pedido.telefono_contacto}</TableCell>
+                  <TableCell className="max-w-50 truncate" title={pedido.indicaciones_ubicacion}>{pedido.indicaciones_ubicacion}</TableCell>
+                  <TableCell>
+                    {pedido.link_ubi && (
+                      <a href={pedido.link_ubi} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                        <MapPin className="size-4" />
+                        Mapa
+                      </a>
+                    )}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell max-w-37.5 truncate" title={pedido.detalle_pedido}>{pedido.detalle_pedido}</TableCell>
                   <TableCell className="text-right font-medium">${pedido.monto_a_cobrar}</TableCell>
                   <TableCell><Badge variant={estado.variant}>{estado.label}</Badge></TableCell>
-                  {/* Mostramos el tipo de servicio real (envio/retiro) */}
                   <TableCell><Badge variant="outline" className="capitalize">{pedido.tipo_servicio}</Badge></TableCell>
                 </TableRow>
               )

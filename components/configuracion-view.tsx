@@ -31,34 +31,56 @@ function AdminTable({ titulo, tabla }: { titulo: string, tabla: string }) {
   }, [])
 
   const handleAgregar = async () => {
-    if (!nuevoNombre.trim()) return
+    if (!nuevoNombre.trim()) {
+      alert("Por favor, escribí un nombre antes de agregar.");
+      return;
+    }
+    
     setLoading(true)
     
-    const { error } = await supabase
-      .from(tabla)
-      .insert([{ nombre: nuevoNombre.trim() }])
-    
-    if (!error) {
-      setNuevoNombre("")
-      fetchItems()
-    } else {
-      alert(`Error al agregar: ${error.message}`)
+    try {
+      // Intentamos insertar y pedimos que nos devuelva el resultado (.select())
+      const { data, error } = await supabase
+        .from(tabla)
+        .insert([{ nombre: nuevoNombre.trim() }])
+        .select()
+      
+      if (error) {
+        console.error("Detalle del error de Supabase:", error);
+        alert(`❌ ERROR DE BASE DE DATOS: ${error.message} (Código: ${error.code})`);
+        return;
+      }
+
+      // Si funcionó
+      setNuevoNombre("");
+      await fetchItems(); 
+      
+    } catch (error: any) {
+      console.error(`Excepción general al agregar en ${tabla}:`, error)
+      alert(`❌ ERROR DESCONOCIDO: ${error?.message || "Revisar consola"}`);
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleEliminar = async (id: number) => {
     if (!confirm(`¿Estás seguro de eliminar este registro?`)) return
 
-    const { error } = await supabase
-      .from(tabla)
-      .delete()
-      .eq('id', id)
-    
-    if (!error) {
-      fetchItems()
-    } else {
-      alert(`No se pudo eliminar: ${error.message}`)
+    try {
+      const { error } = await supabase
+        .from(tabla)
+        .delete()
+        .eq('id', id)
+      
+      if (error) {
+        alert(`❌ No se pudo eliminar: ${error.message}`)
+        return
+      }
+      
+      await fetchItems()
+    } catch (error: any) {
+      console.error(`Error al eliminar en ${tabla}:`, error)
+      alert(`Error crítico al eliminar.`)
     }
   }
 
@@ -71,7 +93,12 @@ function AdminTable({ titulo, tabla }: { titulo: string, tabla: string }) {
           placeholder={`Nuevo/a ${titulo.toLowerCase()}...`} 
           value={nuevoNombre}
           onChange={(e) => setNuevoNombre(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAgregar()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAgregar();
+            }
+          }}
           disabled={loading}
         />
         <Button 
@@ -135,7 +162,6 @@ export function ConfiguracionView() {
         </p>
       </div>
       
-      {/* Grilla responsiva para las 3 tablas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AdminTable titulo="Obras Sociales" tabla="obras_sociales" />
         <AdminTable titulo="Coseguros" tabla="coseguros" />
